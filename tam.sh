@@ -1,42 +1,45 @@
-#!/usr/bin/env bash
-read -p "Enter filename: " filename
+#!/bin/bash
 
-cleanup_file(){
-    if [ -f "$filename" ]; then
-        cat "$filename" | uniq > temp.txt
-        mv temp.txt "$filename"
-        sed -i '/^$/d' "$filename"
+clean_users_list(){
+    if [ -f users.txt ]; then
+        cat users.txt | uniq > temp.txt
+        mv temp.txt users.txt
+        sed -i '/^$/d' users.txt
+        echo Cleaned up users.txt
     else
-        echo "how tf did you get past the initial check"
+        echo "how did you even get here"
         exit 1
     fi
 }
 
-murder(){
-    awk -F: '$3 >= 1000 {print $1} /etc/passwd' | while IFS= read -r username; do
-    if ! id "$username" &>/dev/null && [ "$(id -u "$username")" -ge 1000 ]; then
-            if ! grep -Fxq "$username" "$filename"; then
-                echo "Killing $username"
-                userdel "$username"
+segregate_into_void(){
+    awk -F: '$3 >= 1000 {print $1}' /etc/passwd | while IFS= read -r username; do
+        if [ "$(id -u "$username")" -ge 1000 ]; then
+            if ! grep -Fxq "$username" users.txt; then
+                echo "screw you $username"
+                sudo userdel "$username"
             fi
         fi
-    done
+    done < <(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)
 }
 
-birth(){
-    cat "$filename" | while IFS= read -r username; do
+accouchement() {
+    cat users.txt | while IFS= read -r username; do
         if ! id "$username" &>/dev/null; then
-            echo "Giving birth to $username"
+            echo "giving birth to $username"
             useradd -m "$username"
         fi
     done
 }
 
-if [ ! -f  "$username"]; then
-    echo "Couldn't find that file. Sorry!"
+#TODO: adding and removing admins
+
+#actual script
+if [ ! -f users.txt ]; then
+    echo "uh oh! users.txt not found"
     exit 1
 fi
 
-cleanup_file
-murder
-birth
+clean_users_list
+segregate_into_void
+accouchement
